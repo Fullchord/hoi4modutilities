@@ -46,8 +46,8 @@ function initializeDrag() {
         const y = event.clientY - offsetY - topPaddingBase;
 
         // Snap to grid logic
-        const snappedX = Math.round(x / xGridSize) * xGridSize + leftPaddingBase;
-        const snappedY = Math.round(y / yGridSize) * yGridSize + topPaddingBase;
+        const snappedX = Math.round(x + leftPaddingBase);
+        const snappedY = Math.round(y + topPaddingBase);
 
         draggedFocus.style.left = `${snappedX}px`;
         draggedFocus.style.top = `${snappedY}px`;
