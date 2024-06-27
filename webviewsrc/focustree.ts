@@ -30,9 +30,14 @@ function initializeDrag() {
         const element = focusElement as HTMLDivElement;
 
         element.addEventListener('mousedown', (event: MouseEvent) => {
-            moved = false;
+            // moved = false;
             if (event.button !== 0) return; // Only allow left click
             isDragging = true;
+            if (element != draggedFocus) {
+                moved = true; 
+            } else {
+                moved = false; 
+            }
             draggedFocus = element;
             offsetX = event.offsetX;
             offsetY = event.offsetY;
