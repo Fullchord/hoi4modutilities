@@ -49,11 +49,18 @@ function initializeDrag() {
         const mouseX = Math.round(x + leftPaddingBase);
         const mouseY = Math.round(y + topPaddingBase);
 
-        draggedFocus.style.left = `${mouseX}px`;
-        draggedFocus.style.top = `${mouseY}px`;
+        // draggedFocus.style.left = `${mouseX}px`;
+        // draggedFocus.style.top = `${mouseY}px`;
 
         // Update position in the script and data model in real time
+        const focusId = draggedFocus.id.replace('focus_', '');
+        const focus = focusTrees[selectedFocusTreeIndex].focuses[focusId];
+        const prevX = focus.x;
+        const prevY = focus.y;
         updateFocusPosition(draggedFocus.id, mouseX, mouseY);
+        if (prevX !== focus.x || prevY !== focus.y) {
+            buildContent();
+        }
     });
 
     document.addEventListener('mouseup', async () => {
@@ -69,11 +76,11 @@ function initializeDrag() {
                 }
             }
         } else {
-            const mouseX = parseInt(draggedFocus.style.left);
-            const mouseY = parseInt(draggedFocus.style.top);
+            // const mouseX = parseInt(draggedFocus.style.left);
+            // const mouseY = parseInt(draggedFocus.style.top);
     
-            // Update focus position in the state or data model
-            updateFocusPosition(draggedFocus.id, mouseX, mouseY);
+            // // Update focus position in the state or data model
+            // updateFocusPosition(draggedFocus.id, mouseX, mouseY);
     
             // Re-render the focus tree
             await buildContent();
