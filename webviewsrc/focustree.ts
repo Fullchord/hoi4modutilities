@@ -30,7 +30,7 @@ function initializeDrag() {
         const element = focusElement as HTMLDivElement;
 
         element.addEventListener('mousedown', (event: MouseEvent) => {
-            // moved = false;
+            //moved = false;
             if (event.button !== 0) return; // Only allow left click
             isDragging = true;
             if (element != draggedFocus) {
@@ -76,8 +76,10 @@ function initializeDrag() {
             for (let i = 0; i < navigators.length; i++) {
                 const navigator = navigators[i] as HTMLDivElement;
                 if (navigator.classList.contains('selected')) {
-                    handleNavigatorClick(navigator);
-                    break; // Exit the loop after handling the selected navigator
+                    if (navigator.dataset.id === draggedFocus.dataset.id) {
+                        handleNavigatorClick(navigator);
+                        break; // Exit the loop after handling the selected navigator
+                    } 
                 }
             }
         } else {
