@@ -34,16 +34,16 @@ function initializeDrag() {
             if (event.button !== 0) return; // Only allow left click
             isDragging = true;
             draggedFocus = element;
-            // offsetX = event.offsetX;
-            // offsetY = event.offsetY;
+            offsetX = event.offsetX;
+            offsetY = event.offsetY;
         });
     });
 
     document.addEventListener('mousemove', (event: MouseEvent) => {
         if (!isDragging || !draggedFocus) return;
         moved = true;
-        const x = event.clientX - offsetX - leftPaddingBase;
-        const y = event.clientY - offsetY - topPaddingBase;
+        const x = event.clientX - offsetX;
+        const y = event.clientY - offsetY;
 
         // Snap to grid logic
         const mouseX = Math.round(x + leftPaddingBase);
@@ -104,12 +104,12 @@ function initializeDrag() {
     
 }
 
-function updateFocusPosition(id: string, snappedX: number, snappedY: number) {
+function updateFocusPosition(id: string, mouseX: number, snappemouseYdY: number) {
     const focusId = id.replace('focus_', '');
     const focus = focusTrees[selectedFocusTreeIndex].focuses[focusId];
     if (focus) {
-        const gridX = Math.round((snappedX - leftPaddingBase) / xGridSize);
-        const gridY = Math.round((snappedY - topPaddingBase)  / yGridSize);
+        const gridX = Math.round((mouseX / xGridSize);
+        const gridY = Math.round((mouseY  / yGridSize);
 
         focus.x = gridX;
         focus.y = gridY;
