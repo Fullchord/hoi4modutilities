@@ -57,7 +57,9 @@ function initializeDrag() {
     });
 
     document.addEventListener('mouseup', async () => {
-        if (!moved && isDragging && draggedFocus) {
+        if ( !isDragging || !draggedFocus) return;
+        
+        if (!moved) {
             const navigators = document.getElementsByClassName("navigator");
             for (let i = 0; i < navigators.length; i++) {
                 const navigator = navigators[i] as HTMLDivElement;
@@ -66,7 +68,7 @@ function initializeDrag() {
                     break; // Exit the loop after handling the selected navigator
                 }
             }
-        } else if (isDragging && draggedFocus) {
+        } else {
             const mouseX = parseInt(draggedFocus.style.left);
             const mouseY = parseInt(draggedFocus.style.top);
     
