@@ -1,4 +1,4 @@
-import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun, enableZoom } from "./util/common";
+import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun, enableZoom, navigateText } from "./util/common";
 import { DivDropdown } from "./util/dropdown";
 import { difference, minBy } from "lodash";
 import { renderGridBoxCommon, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridboxcommon";
@@ -10,6 +10,118 @@ import { GridBoxType } from "../src/hoiformat/gui";
 import { toNumberLike } from "../src/hoiformat/schema";
 import { feLocalize } from './util/i18n';
 import { Checkbox } from "./util/checkbox";
+import * as vscode from 'vscode';
+
+let isDragging = false;
+let draggedFocus: HTMLDivElement | null = null;
+let offsetX = 0;
+let offsetY = 0;
+let moved = false;
+
+const leftPaddingBase = 50;
+const topPaddingBase = 50;
+const xGridSize = 96;
+const yGridSize = 130;
+
+function initializeDrag() {
+    const focusElements = document.getElementsByClassName('focus');
+
+    Array.from(focusElements).forEach((focusElement: Element) => {
+        const element = focusElement as HTMLDivElement;
+
+        element.addEventListener('mousedown', (event: MouseEvent) => {
+            moved = false;
+            if (event.button !== 0) return; // Only allow left click
+            isDragging = true;
+            draggedFocus = element;
+            offsetX = event.offsetX;
+            offsetY = event.offsetY;
+        });
+    });
+
+    document.addEventListener('mousemove', (event: MouseEvent) => {
+        if (!isDragging || !draggedFocus) return;
+        moved = true;
+        const x = event.clientX - offsetX - leftPaddingBase;
+        const y = event.clientY - offsetY - topPaddingBase;
+
+        // Snap to grid logic
+        const snappedX = Math.round(x / xGridSize) * xGridSize + leftPaddingBase;
+        const snappedY = Math.round(y / yGridSize) * yGridSize + topPaddingBase;
+
+        draggedFocus.style.left = `${snappedX}px`;
+        draggedFocus.style.top = `${snappedY}px`;
+
+        // Update position in the script and data model in real time
+        updateFocusPosition(draggedFocus.id, snappedX, snappedY);
+    });
+
+    document.addEventListener('mouseup', async () => {
+        if (!moved && isDragging && draggedFocus) {
+            const navigators = document.getElementsByClassName("navigator");
+            for (let i = 0; i < navigators.length; i++) {
+                const navigator = navigators[i] as HTMLDivElement;
+                if (navigator.classList.contains('selected')) {
+                    handleNavigatorClick(navigator);
+                    break; // Exit the loop after handling the selected navigator
+                }
+            }
+        } else if (isDragging && draggedFocus) {
+            const snappedX = parseInt(draggedFocus.style.left) - leftPaddingBase;
+            const snappedY = parseInt(draggedFocus.style.top) - topPaddingBase;
+    
+            const gridX = snappedX / xGridSize;
+            const gridY = snappedY / yGridSize;
+    
+            // Update focus position in the state or data model
+            updateFocusPosition(draggedFocus.id, snappedX, snappedY);
+    
+            // Re-render the focus tree
+            await buildContent();
+    
+            isDragging = false;
+            draggedFocus = null;
+        }
+    });
+    
+    // Function to handle navigator click logic
+    function handleNavigatorClick(navigator: HTMLDivElement) {
+        // Get the start, end, and file attributes from the navigator
+        const startStr = navigator.attributes.getNamedItem('start')?.value;
+        const endStr = navigator.attributes.getNamedItem('end')?.value;
+        const file = navigator.attributes.getNamedItem('file')?.value;
+    
+        // Parse the start and end values
+        const start = !startStr || startStr === 'undefined' ? undefined : parseInt(startStr);
+        const end = !endStr ? undefined : parseInt(endStr);
+    
+        // Call the navigateText function with the parsed values
+        navigateText(start, end, file);
+    }
+    
+    // Example of how to manually handle navigator click
+    const navigators = document.getElementsByClassName("navigator");
+    for (let i = 0; i < navigators.length; i++) {
+        handleNavigatorClick(navigators[i] as HTMLDivElement);
+    }
+    
+}
+
+function updateFocusPosition(id: string, snappedX: number, snappedY: number) {
+    const focusId = id.replace('focus_', '');
+    const focus = focusTrees[selectedFocusTreeIndex].focuses[focusId];
+    if (focus) {
+        const gridX = (snappedX - leftPaddingBase) / xGridSize;
+        const gridY = (snappedY - topPaddingBase) / yGridSize;
+
+        focus.x = gridX;
+        focus.y = gridY;
+
+        // Update the backend or any additional state as needed
+        // Example: send an update request to a server or save to localStorage
+        console.log(`Focus ${focusId} moved to x: ${gridX}, y: ${gridY}`);
+    }
+}
 
 function showBranch(visibility: boolean, optionClass: string) {
     const elements = document.getElementsByClassName(optionClass);
@@ -26,7 +138,7 @@ function showBranch(visibility: boolean, optionClass: string) {
         const element = elements[i] as HTMLDivElement;
         element.style.display = element.className.split(' ').some(b => hiddenBranches[b]) ? "none" : "block";
     }
-};
+}
 
 function search(searchContent: string, navigate: boolean = true) {
     const focuses = document.getElementsByClassName('focus');
@@ -68,29 +180,29 @@ async function buildContent() {
     clearCheckedFocuses();
 
     const focustreeplaceholder = document.getElementById('focustreeplaceholder') as HTMLDivElement;
-    
+
     const styleTable = new StyleTable();
     const renderedFocus: Record<string, string> = (window as any).renderedFocus;
     const focusTree = focusTrees[selectedFocusTreeIndex];
     const focuses = Object.values(focusTree.focuses);
 
+    const gridbox: GridBoxType = (window as any).gridBox;
+    const focusPosition: Record<string, NumberPosition> = {};
+
+    // Define allowBranchOptionsValue and exprs
     const allowBranchOptionsValue: Record<string, boolean> = {};
     const exprs = [{ scopeName: '', nodeContent: 'has_focus_tree = ' + focusTree.id }, ...checkedFocusesExprs, ...selectedExprs];
-    focusTree.allowBranchOptions.forEach(option => {
-        const focus = focusTree.focuses[option];
-        allowBranchOptionsValue[option] = !focus || focus.allowBranch === undefined || applyCondition(focus.allowBranch, exprs);
-    });
 
-    const gridbox: GridBoxType = (window as any).gridBox;
-
-    const focusPosition: Record<string, NumberPosition> = {};
     calculateFocusAllowed(focusTree, allowBranchOptionsValue);
     const focusGrixBoxItems = focuses.map(focus => focusToGridItem(focus, focusTree, allowBranchOptionsValue, focusPosition, exprs)).filter((v): v is GridBoxItem => !!v);
-    
+
     const minX = minBy(Object.values(focusPosition), 'x')?.x ?? 0;
     const leftPadding = gridbox.position.x._value - Math.min(minX * (window as any).xGridSize, 0);
 
-    const focusTreeContent = await renderGridBoxCommon({ ...gridbox, position: {...gridbox.position, x: toNumberLike(leftPadding)} }, {
+    const focusTreeContent = await renderGridBoxCommon({
+        ...gridbox,
+        position: { ...gridbox.position, x: toNumberLike(leftPadding) }
+    }, {
         size: { width: 0, height: 0 },
         orientation: 'upper_left'
     }, {
@@ -100,13 +212,16 @@ async function buildContent() {
             renderedFocus[item.id]
                 .replace('{{position}}', item.gridX + ', ' + item.gridY)
                 .replace('{{iconClass}}', getFocusIcon(focusTree.focuses[item.id], exprs, styleTable))
-            ),
+        ),
         cornerPosition: 0.5,
     });
 
     focustreeplaceholder.innerHTML = focusTreeContent + styleTable.toStyleElement((window as any).styleNonce);
 
-    subscribeNavigators();
+    // subscribeNavigators();
+
+     // Initialize dragging functionality after content is built
+     initializeDrag();
     setupCheckedFocuses(focuses, focusTree);
 }
 
@@ -171,8 +286,8 @@ function updateSelectedFocusTree(clearCondition: boolean) {
         if (conditions) {
             conditions.select.innerHTML = `<span class="value"></span>
                 ${conditionExprs.map(option =>
-                    `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}]` : ''}${option.nodeContent}</div>`
-                ).join('')}`;
+                `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}]` : ''}${option.nodeContent}</div>`
+            ).join('')}`;
             conditions.selectedValues$.next(clearCondition ? [] : selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
         }
 
@@ -262,7 +377,7 @@ function focusToGridItem(
 
     const classNames = focus.inAllowBranch.map(v => 'inbranch_' + v).join(' ');
     const connections: GridBoxConnection[] = [];
-    
+
     for (const prerequisites of focus.prerequisite) {
         let style: string;
         if (prerequisites.length > 1) {
@@ -345,7 +460,7 @@ function setupCheckedFocuses(focuses: Focus[], focusTree: FocusTree) {
                         const newLeft = rect.left, newTop = rect.top;
                         window.scrollBy(newLeft - oldLeft, newTop - oldTop);
                     }
-                    
+
                     retriggerSearch();
                 });
             } else {
@@ -357,7 +472,7 @@ function setupCheckedFocuses(focuses: Focus[], focusTree: FocusTree) {
 
 let retriggerSearch: () => void = () => {};
 
-window.addEventListener('load', tryRun(async function() {
+window.addEventListener('load', tryRun(async function () {
     // Focuses
     const focusesElement = document.getElementById('focuses') as HTMLSelectElement | null;
     if (focusesElement) {
@@ -406,7 +521,7 @@ window.addEventListener('load', tryRun(async function() {
 
     searchbox.value = oldSearchboxValue;
 
-    const searchboxChangeFunc = function(this: HTMLInputElement) {
+    const searchboxChangeFunc = function (this: HTMLInputElement) {
         const searchboxValue = this.value.toLowerCase();
         if (oldSearchboxValue !== searchboxValue) {
             currentNavigatedIndex = 0;
@@ -417,7 +532,7 @@ window.addEventListener('load', tryRun(async function() {
     };
 
     searchbox.addEventListener('change', searchboxChangeFunc);
-    searchbox.addEventListener('keypress', function(e) {
+    searchbox.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             const visibleSearchedFocus = searchedFocus.filter(f => f.style.display !== 'none');
             if (visibleSearchedFocus.length > 0) {
@@ -439,7 +554,7 @@ window.addEventListener('load', tryRun(async function() {
         const conditionsElement = document.getElementById('conditions') as HTMLDivElement | null;
         if (conditionsElement) {
             conditions = new DivDropdown(conditionsElement, true);
-            
+
             conditions.selectedValues$.next(selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
             conditions.selectedValues$.subscribe(async (selection) => {
                 selectedExprs = selection.map<ConditionItem>(selection => {
@@ -458,7 +573,7 @@ window.addEventListener('load', tryRun(async function() {
                 });
 
                 setState({ selectedExprs });
-                
+
                 await buildContent();
                 retriggerSearch();
             });
@@ -479,8 +594,9 @@ window.addEventListener('load', tryRun(async function() {
             warnings.style.display = visible ? 'none' : 'block';
         });
     }
-    
+
     updateSelectedFocusTree(false);
     await buildContent();
     scrollToState();
 }));
+

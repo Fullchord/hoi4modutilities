@@ -100,7 +100,7 @@ export function enableZoom(contentElement: HTMLDivElement, xOffset: number, yOff
     });
 }
 
-function navigateText(start: number | undefined, end: number | undefined, file: string | undefined): void {
+export function navigateText(start: number | undefined, end: number | undefined, file: string | undefined): void {
     vscode.postMessage({
         command: 'navigate',
         start,
