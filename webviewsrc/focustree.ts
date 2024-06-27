@@ -111,8 +111,8 @@ function updateFocusPosition(id: string, snappedX: number, snappedY: number) {
     const focusId = id.replace('focus_', '');
     const focus = focusTrees[selectedFocusTreeIndex].focuses[focusId];
     if (focus) {
-        const gridX = (snappedX - leftPaddingBase) / xGridSize;
-        const gridY = (snappedY - topPaddingBase) / yGridSize;
+        const gridX = Math.round((snappedX - leftPaddingBase) / xGridSize);
+        const gridY = Math.round((snappedY - topPaddingBase) / yGridSize);
 
         focus.x = gridX;
         focus.y = gridY;
