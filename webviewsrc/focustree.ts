@@ -104,12 +104,12 @@ function initializeDrag() {
     
 }
 
-function updateFocusPosition(id: string, mouseX: number, snappemouseYdY: number) {
+function updateFocusPosition(id: string, mouseX: number, mouseY: number) {
     const focusId = id.replace('focus_', '');
     const focus = focusTrees[selectedFocusTreeIndex].focuses[focusId];
     if (focus) {
-        const gridX = Math.round((mouseX / xGridSize);
-        const gridY = Math.round((mouseY  / yGridSize);
+        const gridX = Math.round(mouseX / xGridSize);
+        const gridY = Math.round(mouseY  / yGridSize);
 
         focus.x = gridX;
         focus.y = gridY;
