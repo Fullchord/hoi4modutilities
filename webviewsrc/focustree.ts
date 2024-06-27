@@ -34,8 +34,8 @@ function initializeDrag() {
             if (event.button !== 0) return; // Only allow left click
             isDragging = true;
             draggedFocus = element;
-            offsetX = event.offsetX;
-            offsetY = event.offsetY;
+            // offsetX = event.offsetX;
+            // offsetY = event.offsetY;
         });
     });
 
@@ -46,14 +46,14 @@ function initializeDrag() {
         const y = event.clientY - offsetY - topPaddingBase;
 
         // Snap to grid logic
-        const snappedX = Math.round(x + leftPaddingBase);
-        const snappedY = Math.round(y + topPaddingBase);
+        const mouseX = Math.round(x + leftPaddingBase);
+        const mouseY = Math.round(y + topPaddingBase);
 
-        draggedFocus.style.left = `${snappedX}px`;
-        draggedFocus.style.top = `${snappedY}px`;
+        draggedFocus.style.left = `${mouseX}px`;
+        draggedFocus.style.top = `${mouseY}px`;
 
         // Update position in the script and data model in real time
-        updateFocusPosition(draggedFocus.id, snappedX, snappedY);
+        updateFocusPosition(draggedFocus.id, mouseX, mouseY);
     });
 
     document.addEventListener('mouseup', async () => {
@@ -67,14 +67,11 @@ function initializeDrag() {
                 }
             }
         } else if (isDragging && draggedFocus) {
-            const snappedX = parseInt(draggedFocus.style.left) - leftPaddingBase;
-            const snappedY = parseInt(draggedFocus.style.top) - topPaddingBase;
-    
-            const gridX = snappedX / xGridSize;
-            const gridY = snappedY / yGridSize;
+            const mouseX = parseInt(draggedFocus.style.left);
+            const mouseY = parseInt(draggedFocus.style.top);
     
             // Update focus position in the state or data model
-            updateFocusPosition(draggedFocus.id, snappedX, snappedY);
+            updateFocusPosition(draggedFocus.id, mouseX, mouseY);
     
             // Re-render the focus tree
             await buildContent();
@@ -112,7 +109,7 @@ function updateFocusPosition(id: string, snappedX: number, snappedY: number) {
     const focus = focusTrees[selectedFocusTreeIndex].focuses[focusId];
     if (focus) {
         const gridX = Math.round((snappedX - leftPaddingBase) / xGridSize);
-        const gridY = Math.round((snappedY - topPaddingBase) / yGridSize);
+        const gridY = Math.round((snappedY - topPaddingBase)  / yGridSize);
 
         focus.x = gridX;
         focus.y = gridY;
