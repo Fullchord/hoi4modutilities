@@ -10,13 +10,11 @@ import { GridBoxType } from "../src/hoiformat/gui";
 import { toNumberLike } from "../src/hoiformat/schema";
 import { feLocalize } from './util/i18n';
 import { Checkbox } from "./util/checkbox";
-import * as vscode from 'vscode';
 
 let isDragging = false;
 let draggedFocus: HTMLDivElement | null = null;
 let offsetX = 0;
 let offsetY = 0;
-let moved = false;
 
 const leftPaddingBase = 50;
 const topPaddingBase = 50;
@@ -30,14 +28,8 @@ function initializeDrag() {
         const element = focusElement as HTMLDivElement;
 
         element.addEventListener('mousedown', (event: MouseEvent) => {
-            //moved = false;
             if (event.button !== 0) return; // Only allow left click
             isDragging = true;
-            if (element != draggedFocus) {
-                moved = true; 
-            } else {
-                moved = false; 
-            }
             draggedFocus = element;
             offsetX = event.offsetX;
             offsetY = event.offsetY;
@@ -46,16 +38,13 @@ function initializeDrag() {
 
     document.addEventListener('mousemove', (event: MouseEvent) => {
         if (!isDragging || !draggedFocus) return;
-        moved = true;
+
         const x = event.clientX - offsetX;
         const y = event.clientY - offsetY;
 
         // Snap to grid logic
         const mouseX = Math.round(x + leftPaddingBase);
         const mouseY = Math.round(y + topPaddingBase);
-
-        // draggedFocus.style.left = `${mouseX}px`;
-        // draggedFocus.style.top = `${mouseY}px`;
 
         // Update position in the script and data model in real time
         const focusId = draggedFocus.id.replace('focus_', '');
@@ -70,69 +59,28 @@ function initializeDrag() {
 
     document.addEventListener('mouseup', async () => {
         if ( !isDragging || !draggedFocus) return;
-        
-        if (!moved) {
-            const navigators = document.getElementsByClassName("navigator");
-            for (let i = 0; i < navigators.length; i++) {
-                const navigator = navigators[i] as HTMLDivElement;
-                if (navigator.classList.contains('selected')) {
-                    if (navigator.dataset.id === draggedFocus.dataset.id) {
-                        handleNavigatorClick(navigator);
-                        break; // Exit the loop after handling the selected navigator
-                    } 
-                }
-            }
-        } else {
-            // const mouseX = parseInt(draggedFocus.style.left);
-            // const mouseY = parseInt(draggedFocus.style.top);
-    
-            // // Update focus position in the state or data model
-            // updateFocusPosition(draggedFocus.id, mouseX, mouseY);
-    
-            // Re-render the focus tree
-            await buildContent();
-    
-            isDragging = false;
-            draggedFocus = null;
-        }
+
+        // Re-render the focus tree
+        await buildContent();
+
+        isDragging = false;
+        draggedFocus = null;
     });
-    
-    // Function to handle navigator click logic
-    function handleNavigatorClick(navigator: HTMLDivElement) {
-        // Get the start, end, and file attributes from the navigator
-        const startStr = navigator.attributes.getNamedItem('start')?.value;
-        const endStr = navigator.attributes.getNamedItem('end')?.value;
-        const file = navigator.attributes.getNamedItem('file')?.value;
-    
-        // Parse the start and end values
-        const start = !startStr || startStr === 'undefined' ? undefined : parseInt(startStr);
-        const end = !endStr ? undefined : parseInt(endStr);
-    
-        // Call the navigateText function with the parsed values
-        navigateText(start, end, file);
-    }
-    
-    // Example of how to manually handle navigator click
-    const navigators = document.getElementsByClassName("navigator");
-    for (let i = 0; i < navigators.length; i++) {
-        handleNavigatorClick(navigators[i] as HTMLDivElement);
-    }
-    
-}
 
-function updateFocusPosition(id: string, mouseX: number, mouseY: number) {
-    const focusId = id.replace('focus_', '');
-    const focus = focusTrees[selectedFocusTreeIndex].focuses[focusId];
-    if (focus) {
-        const gridX = Math.round(mouseX / xGridSize);
-        const gridY = Math.round(mouseY  / yGridSize);
+    function updateFocusPosition(id: string, mouseX: number, mouseY: number) {
+        const focusId = id.replace('focus_', '');
+        const focus = focusTrees[selectedFocusTreeIndex].focuses[focusId];
+        if (focus) {
+            const gridX = Math.round(mouseX / xGridSize);
+            const gridY = Math.round(mouseY  / yGridSize);
 
-        focus.x = gridX;
-        focus.y = gridY;
+            focus.x = gridX;
+            focus.y = gridY;
 
-        // Update the backend or any additional state as needed
-        // Example: send an update request to a server or save to localStorage
-        console.log(`Focus ${focusId} moved to x: ${gridX}, y: ${gridY}`);
+            // Update the backend or any additional state as needed
+            // Example: send an update request to a server or save to localStorage
+            console.log(`Focus ${focusId} moved to x: ${gridX}, y: ${gridY}`);
+        }
     }
 }
 
