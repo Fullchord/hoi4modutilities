@@ -39,8 +39,10 @@ function initializeDrag() {
     document.addEventListener('mousemove', (event: MouseEvent) => {
         if (!isDragging || !draggedFocus) return;
 
-        const x = event.clientX - offsetX;
-        const y = event.clientY - offsetY;
+        let scale = getState().scale || 1;
+
+        const x = (event.clientX - offsetX) / scale;
+        const y = (event.clientY - offsetY) / scale;
 
         // Snap to grid logic
         const mouseX = Math.round(x + leftPaddingBase);
